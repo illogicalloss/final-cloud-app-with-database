@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponseRedirect
 # <HINT> Import any new Models here
-from .models import Course, Enrollment, Submission, Choice
+from .models import Course, Enrollment, Submission, Choice, Question
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
@@ -118,10 +118,10 @@ def submit(request, course_id):
     for key in request.POST:
         if key.startswith('choice'):
             value=request.POST[key]
-            print(request.POST[key])
+            #print(request.POST[key])
             c=Choice.objects.get(id=value)
             submission.choices.add(c)
-    print(submission.choices.all())
+    #print(submission.choices.all())
 
     return HttpResponseRedirect(reverse(viewname='onlinecourse:show_exam_result', args=(course.id, submission.id)))
 
@@ -146,12 +146,23 @@ def submit(request, course_id):
         # Calculate the total score
 def show_exam_result(request, course_id, submission_id):
     context={}
-    course=get_object_or_404(Course, pk=course_id)
-    submission=get_object_or_404(Submission, pk=submission_id)
-    choices=submission.choices
+    course = get_object_or_404(Course, pk=course_id)
+    submission = get_object_or_404(Submission, pk=submission_id)
+    choices = submission.choices
+    questions = Question.objects.filter(course=course)
+    totalPoints=0
+    earnedPoints=0
+    for q in questions:
+        totalPoints+=q.grade
+        #if every answer picked is correct without any incorrect answers
+        if set(Choice.objects.filter(question=q,correct=True)) == set(submission.choices.filter(question=q)):
+            earnedPoints+=q.grade
+    #print("You got ", earnedPoints," out of ", totalPoints)
+        
+
     context['course'] = course
     context['choices'] = choices
-    #context['grade'] = 
+    context['grade'] = int((earnedPoints/totalPoints)*100)
     return render(request, 'onlinecourse/exam_result_bootstrap.html', context)
 
 
